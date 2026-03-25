@@ -1,0 +1,35 @@
+.DS_Store
+
+# IDE
+.idea/
+*.iml
+
+# Local Android / Gradle environment
+.gradle/
+.gradle-home/
+.android-sdk/
+.toolchains/
+local.properties
+
+# Python environments
+.venv/
+.venv-sd15/
+__pycache__/
+*.pyc
+
+# Build outputs
+build/
+captures/
+.cxx/
+app/.cxx/
+app/build/
+native/.cxx/
+
+# Local model assets and generated exports
+models/
+
+# Third-party reference project kept only for local study
+docs/
+
+# Scratch area
+scratch/
