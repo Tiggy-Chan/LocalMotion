@@ -25,6 +25,7 @@ LocalMotion is a clean-room Android prototype for on-device image-to-video gener
 - `tools/convert-qnn/`: SD1.5 export helpers and runtime manifest packager
 - `docs/architecture.md`: implementation notes and next integration steps
 - `docs/sd15-first-npu.md`: first real NPU milestone for `txt2img` / `img2img`
+- `docs/wsl-sd15-qnn-checklist.md`: WSL-side setup checklist before QNN work
 
 ## Important Notes
 
