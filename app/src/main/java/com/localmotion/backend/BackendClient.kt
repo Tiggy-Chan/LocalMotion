@@ -1,7 +1,7 @@
 package com.localmotion.backend
 
-import com.localmotion.model.VideoGenerationRequest
-import com.localmotion.model.VideoProgressEvent
+import com.localmotion.model.GenerationProgressEvent
+import com.localmotion.model.ImageGenerationRequest
 import kotlinx.coroutines.delay
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -14,9 +14,8 @@ import java.util.concurrent.TimeUnit
 data class BackendCompletion(
     val width: Int,
     val height: Int,
-    val fps: Int,
-    val durationMs: Long,
     val seed: Long?,
+    val imageBase64: String? = null,
 )
 
 data class BackendHealth(
@@ -81,12 +80,12 @@ class BackendClient(
     }
 
     @Throws(IOException::class)
-    fun generateClip(
-        requestModel: VideoGenerationRequest,
-        onProgress: (VideoProgressEvent) -> Unit,
+    fun generateImage(
+        requestModel: ImageGenerationRequest,
+        onProgress: (GenerationProgressEvent) -> Unit,
     ): BackendCompletion {
         val request = Request.Builder()
-            .url("$baseUrl/generate_clip")
+            .url("$baseUrl/generate_image")
             .post(requestModel.toJson().toRequestBody("application/json".toMediaType()))
             .build()
 
@@ -115,7 +114,7 @@ class BackendClient(
                         val payload = eventData
                         if (payload != null) {
                             when (eventName) {
-                                "progress" -> onProgress(VideoProgressEvent.fromJson(payload))
+                                "progress" -> onProgress(GenerationProgressEvent.fromJson(payload))
                                 "complete" -> completion = parseCompletion(payload)
                                 "error" -> {
                                     val message = JSONObject(payload).optString("message", "Unknown backend error")
@@ -138,9 +137,8 @@ class BackendClient(
         return BackendCompletion(
             width = json.optInt("width", 512),
             height = json.optInt("height", 512),
-            fps = json.optInt("fps", 12),
-            durationMs = json.optLong("durationMs", 4000L),
             seed = if (json.has("seed")) json.optLong("seed") else null,
+            imageBase64 = json.optString("imageBase64").takeIf { it.isNotBlank() },
         )
     }
 }

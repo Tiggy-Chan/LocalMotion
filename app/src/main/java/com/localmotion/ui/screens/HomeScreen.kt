@@ -57,9 +57,9 @@ import com.localmotion.BuildConfig
 import com.localmotion.data.ArtifactRepository
 import com.localmotion.data.RuntimeRepository
 import com.localmotion.data.SettingsRepository
-import com.localmotion.model.VideoArtifact
+import com.localmotion.model.ImageArtifact
 import com.localmotion.service.BackendService
-import com.localmotion.service.ClipGenerationService
+import com.localmotion.service.GenerationService
 import com.localmotion.service.RuntimeInstallService
 import com.localmotion.ui.theme.Clay
 import com.localmotion.ui.theme.Copper
@@ -69,6 +69,7 @@ import com.localmotion.util.ImageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,13 +83,16 @@ fun HomeScreen(
     val artifactRepository = remember { ArtifactRepository(context) }
     val userSettings by settingsRepository.settings.collectAsState(initial = com.localmotion.data.UserSettings())
     val backendState by BackendService.backendState.collectAsState()
-    val generationState by ClipGenerationService.generationState.collectAsState()
+    val generationState by GenerationService.generationState.collectAsState()
     val installState by RuntimeInstallService.installState.collectAsState()
 
     var selectedUriString by rememberSaveable { mutableStateOf<String?>(null) }
     var prompt by rememberSaveable { mutableStateOf("") }
-    var styleStrength by rememberSaveable { mutableStateOf(userSettings.defaultStyleStrength) }
-    var artifacts by remember { mutableStateOf(emptyList<VideoArtifact>()) }
+    var negativePrompt by rememberSaveable { mutableStateOf("") }
+    var guidanceScale by rememberSaveable { mutableStateOf(userSettings.defaultGuidanceScale) }
+    var inferenceSteps by rememberSaveable { mutableStateOf(userSettings.defaultInferenceSteps) }
+    var img2imgStrength by rememberSaveable { mutableStateOf(userSettings.defaultImg2ImgStrength) }
+    var artifacts by remember { mutableStateOf(emptyList<ImageArtifact>()) }
     var runtimeStatus by remember { mutableStateOf(runtimeRepository.status()) }
     var runtimeValidationRunning by remember { mutableStateOf(false) }
 
@@ -111,9 +115,9 @@ fun HomeScreen(
 
     LaunchedEffect(generationState) {
         when (generationState) {
-            is ClipGenerationService.GenerationState.Completed,
-            is ClipGenerationService.GenerationState.Cancelled,
-            is ClipGenerationService.GenerationState.Error,
+            is GenerationService.GenerationState.Completed,
+            is GenerationService.GenerationState.Cancelled,
+            is GenerationService.GenerationState.Error,
             -> {
                 artifacts = artifactRepository.loadArtifacts()
                 runtimeStatus = runtimeRepository.status()
@@ -160,7 +164,7 @@ fun HomeScreen(
                 Column {
                     Text("LocalMotion", fontWeight = FontWeight.Bold)
                     Text(
-                        text = "骁龙 8 Gen 3 本地图生视频工作台",
+                        text = "骁龙 8 Gen 3 本地 SD1.5 实验台",
                         style = MaterialTheme.typography.labelMedium,
                     )
                 }
@@ -170,9 +174,9 @@ fun HomeScreen(
         SectionCard(title = "运行模式", modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(
                 text = if (runtimeStatus.isReady) {
-                    "QNN 运行时已安装"
+                    "SD1.5/QNN 运行时已安装"
                 } else {
-                    "当前为演示模式"
+                    "当前为占位模式"
                 },
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
@@ -180,9 +184,9 @@ fun HomeScreen(
             Spacer(Modifier.height(8.dp))
             Text(
                 if (runtimeStatus.isReady) {
-                    "模型包已经在本地通过结构校验。sidecar 会优先尝试进入 QNN 后端，可用性再由 /health 决定。"
+                    "模型包已经在本地通过结构校验。sidecar 会优先尝试进入 SD1.5 QNN 后端，可用性再由 /health 决定。"
                 } else {
-                    "现在可以直接测试选图、生成、播放和导出流程。安装并校验真实运行时后，这里会切换到 QNN 路线。"
+                    "现在先保留占位链路。安装并校验真实 SD1.5 运行时后，这里会切换到 QNN 路线。"
                 },
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -340,7 +344,7 @@ fun HomeScreen(
                 }
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    text = if (selectedBitmap != null) "已选择图片" else "未选择图片",
+                    text = if (selectedBitmap != null) "已选择参考图" else "未选择参考图，可直接文生图",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -360,43 +364,75 @@ fun HomeScreen(
                 onValueChange = { prompt = it },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("提示词") },
-                placeholder = { Text("描述主体、风格、构图或修改意图") },
+                placeholder = { Text("描述主体、风格、镜头、光线；不选图时按 txt2img 入口准备") },
                 supportingText = {
-                    Text("当前先聚焦 SD1.5 的文生图/图生图能力，视频链路后续会重做。")
+                    Text("当前先聚焦 SD1.5。可以只写提示词直接起步，也可以选参考图走 img2img。")
                 },
             )
             Spacer(Modifier.height(12.dp))
-            Text("风格强度：${"%.2f".format(styleStrength)}")
-            Slider(
-                value = styleStrength,
-                onValueChange = { styleStrength = it },
-                valueRange = 0f..1f,
+            OutlinedTextField(
+                value = negativePrompt,
+                onValueChange = { negativePrompt = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("负向提示词") },
+                placeholder = { Text("例如：blurry, low quality, extra fingers") },
             )
+            Spacer(Modifier.height(12.dp))
+            Text("CFG：${"%.1f".format(guidanceScale)}")
+            Slider(
+                value = guidanceScale,
+                onValueChange = { guidanceScale = it },
+                valueRange = 1f..12f,
+            )
+            Spacer(Modifier.height(12.dp))
+            Text("步数：$inferenceSteps")
+            Slider(
+                value = inferenceSteps.toFloat(),
+                onValueChange = { inferenceSteps = it.roundToInt() },
+                valueRange = 4f..40f,
+                steps = 35,
+            )
+            if (selectedBitmap != null) {
+                Spacer(Modifier.height(12.dp))
+                Text("重绘强度：${"%.2f".format(img2imgStrength)}")
+                Slider(
+                    value = img2imgStrength,
+                    onValueChange = { img2imgStrength = it },
+                    valueRange = 0.1f..1f,
+                )
+            }
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
                     onClick = {
-                        val uri = selectedUriString?.let(Uri::parse) ?: return@Button
+                        val uri = selectedUriString?.let(Uri::parse)
                         scope.launch {
-                            settingsRepository.updateStyleStrength(styleStrength)
+                            settingsRepository.updateGenerationDefaults(
+                                guidanceScale = guidanceScale,
+                                inferenceSteps = inferenceSteps,
+                                img2imgStrength = img2imgStrength,
+                            )
                         }
-                        ClipGenerationService.start(
+                        GenerationService.start(
                             context = context,
                             imageUri = uri,
                             prompt = prompt,
-                            styleStrength = styleStrength,
+                            negativePrompt = negativePrompt,
+                            guidanceScale = guidanceScale,
+                            inferenceSteps = inferenceSteps,
+                            img2imgStrength = img2imgStrength,
                         )
                     },
-                    enabled = selectedUriString != null &&
-                        generationState !is ClipGenerationService.GenerationState.Running &&
-                        generationState !is ClipGenerationService.GenerationState.Preparing,
+                    enabled = (selectedUriString != null || prompt.isNotBlank()) &&
+                        generationState !is GenerationService.GenerationState.Running &&
+                        generationState !is GenerationService.GenerationState.Preparing,
                 ) {
-                    Text("运行当前生成链路")
+                    Text("运行 SD1.5 图像生成")
                 }
                 TextButton(
-                    onClick = { ClipGenerationService.cancel(context) },
-                    enabled = generationState is ClipGenerationService.GenerationState.Running ||
-                        generationState is ClipGenerationService.GenerationState.Preparing,
+                    onClick = { GenerationService.cancel(context) },
+                    enabled = generationState is GenerationService.GenerationState.Running ||
+                        generationState is GenerationService.GenerationState.Preparing,
                 ) {
                     Text("取消")
                 }
@@ -407,16 +443,16 @@ fun HomeScreen(
             Text("后端：${backendState.label(runtimeStatus.isReady)}")
             Spacer(Modifier.height(8.dp))
             when (val state = generationState) {
-                ClipGenerationService.GenerationState.Idle -> Text("空闲")
-                is ClipGenerationService.GenerationState.Preparing -> Text(state.message)
-                is ClipGenerationService.GenerationState.Running -> {
+                GenerationService.GenerationState.Idle -> Text("空闲")
+                is GenerationService.GenerationState.Preparing -> Text(state.message)
+                is GenerationService.GenerationState.Running -> {
                     Text("阶段：${state.stage.prettyStage()}")
                     Spacer(Modifier.height(8.dp))
                     LinearProgressIndicator(
                         progress = { state.progress.coerceIn(0f, 1f) },
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    state.previewFrameBase64?.let { preview ->
+                    state.previewImageBase64?.let { preview ->
                         val previewBitmap = ImageUtils.base64ToBitmap(preview)
                         if (previewBitmap != null) {
                             Spacer(Modifier.height(12.dp))
@@ -431,24 +467,24 @@ fun HomeScreen(
                     }
                 }
 
-                is ClipGenerationService.GenerationState.Completed -> {
+                is GenerationService.GenerationState.Completed -> {
                     Text("已完成：${state.artifact.id}")
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { onOpenArtifact(state.artifact.id) }) {
-                            Text("打开")
+                            Text("打开结果")
                         }
                     }
                 }
 
-                is ClipGenerationService.GenerationState.Cancelled -> Text("已取消")
-                is ClipGenerationService.GenerationState.Error -> Text("错误：${state.message}")
+                is GenerationService.GenerationState.Cancelled -> Text("已取消")
+                is GenerationService.GenerationState.Error -> Text("错误：${state.message}")
             }
         }
 
         SectionCard(title = "历史记录", modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             if (artifacts.isEmpty()) {
-                Text("还没有生成视频。")
+                Text("还没有生成记录。")
             } else {
                 artifacts.forEach { artifact ->
                     Card(
@@ -463,7 +499,14 @@ fun HomeScreen(
                                 fontWeight = FontWeight.SemiBold,
                             )
                             Spacer(Modifier.height(4.dp))
-                            Text("${artifact.durationMs / 1000f}s - ${artifact.fps}fps")
+                            Text(
+                                "${artifact.sourceMode.toModeLabel()} - ${artifact.width}x${artifact.height} - ${artifact.inferenceSteps} steps",
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                "CFG ${"%.1f".format(artifact.guidanceScale)} · strength ${"%.2f".format(artifact.strength)}",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                             if (artifact.prompt.isNotBlank()) {
                                 Spacer(Modifier.height(4.dp))
                                 Text(
@@ -473,7 +516,7 @@ fun HomeScreen(
                             }
                             Spacer(Modifier.height(8.dp))
                             TextButton(onClick = { onOpenArtifact(artifact.id) }) {
-                                Text("打开视频")
+                                Text("打开结果")
                             }
                         }
                     }
@@ -521,13 +564,23 @@ private fun BackendService.BackendState.label(runtimeReady: Boolean): String {
 }
 
 private fun String.prettyStage(): String = when (this) {
+    "prepare" -> "输入整理"
+    "encode_text" -> "文本编码"
+    "init_latent" -> "潜变量初始化"
+    "denoise" -> "UNet 去噪"
+    "decode_vae" -> "VAE 解码"
+    "save" -> "写入结果"
     "preprocess" -> "输入整理"
     "stylize" -> "首帧风格化"
     "depth" -> "深度估计"
     "render" -> "关键帧渲染"
     "interpolate" -> "中间帧补足"
-    "encode" -> "视频编码"
     else -> replace('_', ' ')
+}
+
+private fun String.toModeLabel(): String = when (this) {
+    "img2img" -> "IMG2IMG"
+    else -> "TXT2IMG"
 }
 
 private fun formatBytes(value: Long): String {

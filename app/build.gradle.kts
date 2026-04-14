@@ -21,7 +21,7 @@ val runtimeManifestUrl = (
 android {
     namespace = "com.localmotion"
     compileSdk = 36
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "27.2.12479018"
 
     defaultConfig {
         applicationId = "com.localmotion"
@@ -39,6 +39,7 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags += "-std=c++17"
+                arguments += "-DCMAKE_QNN_SDK_ROOT=${rootDir}/third_party/qnn/v2.44.0.260225"
             }
         }
 

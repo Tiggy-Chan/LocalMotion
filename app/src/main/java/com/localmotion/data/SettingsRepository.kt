@@ -11,27 +11,33 @@ import kotlinx.coroutines.flow.map
 private val Context.settingsDataStore by preferencesDataStore(name = "localmotion_settings")
 
 data class UserSettings(
-    val defaultStyleStrength: Float = 0.25f,
-    val defaultDurationSec: Int = 4,
-    val defaultFps: Int = 12,
+    val defaultGuidanceScale: Float = 7.5f,
+    val defaultInferenceSteps: Int = 20,
+    val defaultImg2ImgStrength: Float = 0.75f,
 )
 
 class SettingsRepository(private val context: Context) {
-    private val styleStrengthKey = floatPreferencesKey("default_style_strength")
-    private val durationKey = intPreferencesKey("default_duration_sec")
-    private val fpsKey = intPreferencesKey("default_fps")
+    private val guidanceScaleKey = floatPreferencesKey("default_guidance_scale")
+    private val inferenceStepsKey = intPreferencesKey("default_inference_steps")
+    private val img2imgStrengthKey = floatPreferencesKey("default_img2img_strength")
 
     val settings: Flow<UserSettings> = context.settingsDataStore.data.map { prefs ->
         UserSettings(
-            defaultStyleStrength = prefs[styleStrengthKey] ?: 0.25f,
-            defaultDurationSec = prefs[durationKey] ?: 4,
-            defaultFps = prefs[fpsKey] ?: 12,
+            defaultGuidanceScale = prefs[guidanceScaleKey] ?: 7.5f,
+            defaultInferenceSteps = prefs[inferenceStepsKey] ?: 20,
+            defaultImg2ImgStrength = prefs[img2imgStrengthKey] ?: 0.75f,
         )
     }
 
-    suspend fun updateStyleStrength(styleStrength: Float) {
+    suspend fun updateGenerationDefaults(
+        guidanceScale: Float,
+        inferenceSteps: Int,
+        img2imgStrength: Float,
+    ) {
         context.settingsDataStore.edit { prefs ->
-            prefs[styleStrengthKey] = styleStrength
+            prefs[guidanceScaleKey] = guidanceScale
+            prefs[inferenceStepsKey] = inferenceSteps
+            prefs[img2imgStrengthKey] = img2imgStrength
         }
     }
 }

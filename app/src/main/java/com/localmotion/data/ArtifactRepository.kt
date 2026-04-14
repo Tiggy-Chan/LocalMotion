@@ -1,7 +1,7 @@
 package com.localmotion.data
 
 import android.content.Context
-import com.localmotion.model.VideoArtifact
+import com.localmotion.model.ImageArtifact
 import java.io.File
 import java.util.UUID
 
@@ -9,7 +9,7 @@ class ArtifactRepository(private val context: Context) {
     private val maxArtifactCount = 30
     private val maxTotalBytes = 2L * 1024L * 1024L * 1024L
 
-    fun artifactsDir(): File = File(context.filesDir, "generated_videos").apply {
+    fun artifactsDir(): File = File(context.filesDir, "generated_images").apply {
         if (!exists()) {
             mkdirs()
         }
@@ -19,7 +19,7 @@ class ArtifactRepository(private val context: Context) {
         mkdirs()
     }
 
-    fun saveArtifact(artifact: VideoArtifact) {
+    fun saveArtifact(artifact: ImageArtifact) {
         val directory = File(artifactsDir(), artifact.id).apply {
             if (!exists()) {
                 mkdirs()
@@ -29,7 +29,7 @@ class ArtifactRepository(private val context: Context) {
         enforceStoragePolicy()
     }
 
-    fun loadArtifacts(): List<VideoArtifact> =
+    fun loadArtifacts(): List<ImageArtifact> =
         artifactsDir()
             .listFiles()
             .orEmpty()
@@ -39,17 +39,17 @@ class ArtifactRepository(private val context: Context) {
                 if (!artifactFile.exists()) {
                     null
                 } else {
-                    runCatching { VideoArtifact.fromJson(artifactFile.readText()) }.getOrNull()
+                    runCatching { ImageArtifact.fromJson(artifactFile.readText()) }.getOrNull()
                 }
             }
             .sortedByDescending { it.createdAtEpochMs }
 
-    fun loadArtifact(id: String): VideoArtifact? {
+    fun loadArtifact(id: String): ImageArtifact? {
         val artifactFile = File(File(artifactsDir(), id), "artifact.json")
         if (!artifactFile.exists()) {
             return null
         }
-        return runCatching { VideoArtifact.fromJson(artifactFile.readText()) }.getOrNull()
+        return runCatching { ImageArtifact.fromJson(artifactFile.readText()) }.getOrNull()
     }
 
     private fun enforceStoragePolicy() {

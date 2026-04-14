@@ -1,0 +1,8 @@
+diffusers
+transformers
+accelerate
+safetensors
+onnx
+optimum
+onnxruntime
+onnxscript

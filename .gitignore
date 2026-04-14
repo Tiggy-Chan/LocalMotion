@@ -14,8 +14,10 @@ local.properties
 # Python environments
 .venv/
 .venv-sd15/
+.venv-qairt/
 __pycache__/
 *.pyc
+.env.qnn
 
 # Build outputs
 build/
@@ -27,9 +29,19 @@ native/.cxx/
 
 # Local model assets and generated exports
 models/
+third_party/qnn/*
+!third_party/qnn/.gitkeep
 
-# Third-party reference project kept only for local study
-docs/
+# Git-cloned dependencies (should use git submodule or re-download)
+native/third_party/xtensor/
+native/third_party/xtl/
+native/third_party/xsimd/
+native/third_party/stb/
+native/third_party/json/
+native/third_party/cpp-httplib/
+native/third_party/tokenizers-cpp/
+# SampleApp IS committed (copied from QNN SDK)
+!native/third_party/SampleApp/
 
 # Scratch area
 scratch/

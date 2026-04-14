@@ -15,6 +15,7 @@
 对应文档：
 
 - `docs/sd15-first-npu.md`
+- `docs/wsl-sd15-qnn-checklist.md`
 - `tools/convert-qnn/sd15/README.md`
 
 当前仓库已经完成：
@@ -30,25 +31,61 @@
 - context cache 生成
 - Android 侧真实 QNN 推理接入
 
+为了把 WSL 侧准备动作固定下来，仓库里新增了：
+
+- `tools/convert-qnn/sd15/prepare_wsl_sd15.sh`
+- `tools/convert-qnn/sd15/check_wsl_sd15_qnn.py`
+- `tools/convert-qnn/sd15/requirements.txt`
+
+推荐先执行：
+
+```bash
+bash tools/convert-qnn/sd15/prepare_wsl_sd15.sh
+```
+
+如果只想核对当前仓库状态：
+
+```bash
+python tools/convert-qnn/sd15/check_wsl_sd15_qnn.py
+```
+
 ## 当前运行时 Bundle 约定
 
-现有 Android app 仍然沿用视频路线的 bundle 结构，默认期待：
+当前 Android app 已经切到首个 `sd15-v1` bundle，默认期待：
 
-- `models/sd15_img2img.bin`
-- `models/depth_anything_v2_small.bin`
-- `models/rife46_lite.bin`
-- 可选支持文件放在 `qnn/` 或 `assets/`
+- `models/text_encoder.bin`
+- `models/text_encoder.so`
+- `models/unet.bin`
+- `models/unet.so`
+- `models/vae_encoder.bin`
+- `models/vae_encoder.so`
+- `models/vae_decoder.bin`
+- `models/vae_decoder.so`
+- `tokenizer/tokenizer.json`
+- `tokenizer/tokenizer_config.json`
+- `qnn/lib/libQnnSystem.so`
+- `qnn/lib/libQnnHtp.so`
+- 其他 `qnn/`、`assets/` 下的支持文件
 
-这只是当前 app 的占位协议，不代表首个 NPU 实例必须按这个结构走。
+这一步的目的是把运行时协议先和旧视频占位结构解耦。
 
-如果下一步先落地 `SD1.5 txt2img/img2img`，更合理的做法是单独定义一套 `sd15-v1` bundle。
+旧的 `video-v1` 结构仍然能被解析为 legacy workload，但当前 APK 不会把它当成可安装的目标运行时。
 
 ## 生成 `runtime-manifest.json`
 
+建议先组装 bundle：
+
+```bash
+bash tools/convert-qnn/sd15/stage_runtime_bundle.sh /path/to/runtime_bundle
+```
+
+再生成清单：
+
 ```bash
 python3 tools/convert-qnn/package_runtime_bundle.py \
+  --profile sd15 \
   --bundle-dir /path/to/runtime_bundle \
-  --base-url https://example.com/localmotion/video-v1 \
+  --base-url https://example.com/localmotion/sd15-v1 \
   --version 0.1.0 \
   --output /path/to/runtime_bundle/runtime-manifest.json
 ```
@@ -56,7 +93,7 @@ python3 tools/convert-qnn/package_runtime_bundle.py \
 或：
 
 ```bash
-bash tools/convert-qnn/export_sm8650.sh /path/to/runtime_bundle https://example.com/localmotion/video-v1 0.1.0
+bash tools/convert-qnn/export_sm8650.sh /path/to/runtime_bundle https://example.com/localmotion/sd15-v1 0.1.0
 ```
 
 ## 这个仓库不会提交的内容

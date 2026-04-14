@@ -5,9 +5,9 @@
     <string name="backend_notification_title">LocalMotion 后端</string>
     <string name="backend_notification_text">本地原生后端正在运行。</string>
     <string name="generation_channel_name">LocalMotion 生成任务</string>
-    <string name="generation_channel_description">跟踪本地视频生成任务。</string>
-    <string name="generation_notification_title">正在生成本地视频</string>
-    <string name="generation_notification_text">正在设备端渲染帧并编码视频。</string>
+    <string name="generation_channel_description">跟踪本地 SD1.5 生成任务。</string>
+    <string name="generation_notification_title">正在生成当前结果</string>
+    <string name="generation_notification_text">正在设备端执行当前生成链路。</string>
     <string name="runtime_install_channel_name">LocalMotion 运行时安装</string>
     <string name="runtime_install_channel_description">下载并校验 QNN 运行时模型包。</string>
     <string name="runtime_install_notification_title">正在安装 QNN 运行时</string>
