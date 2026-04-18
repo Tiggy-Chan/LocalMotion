@@ -20,8 +20,9 @@ data class RuntimeStatus(
 
 class RuntimeRepository(private val context: Context) {
     private val manifestFileName = "runtime-manifest.json"
+    private val runtimeProfile = currentRuntimeWorkloadProfile()
 
-    fun modelDir(): File = File(context.filesDir, "models/video-v1").apply {
+    fun modelDir(): File = File(context.filesDir, "models/${runtimeProfile.installDirName}").apply {
         if (!exists()) {
             mkdirs()
         }
@@ -60,7 +61,7 @@ class RuntimeRepository(private val context: Context) {
             )
         }
 
-        val validationErrors = manifest.validate(Build.SOC_MODEL).toMutableList()
+        val validationErrors = manifest.validate(Build.SOC_MODEL, runtimeProfile.id).toMutableList()
         val missingFiles = mutableListOf<String>()
         var installedBytes = 0L
 
@@ -127,7 +128,7 @@ class RuntimeRepository(private val context: Context) {
                 mkdirs()
             }
         }
-        return File(stagingRoot, "video-v1-${System.currentTimeMillis()}").apply {
+        return File(stagingRoot, "${runtimeProfile.installDirName}-${System.currentTimeMillis()}").apply {
             mkdirs()
         }
     }
@@ -142,7 +143,7 @@ class RuntimeRepository(private val context: Context) {
     fun commitStagingDir(stagingDir: File) {
         val finalDir = modelDir()
         val parent = finalDir.parentFile ?: throw IllegalStateException("模型目录没有父目录")
-        val backupDir = File(parent, "video-v1.backup")
+        val backupDir = File(parent, "${runtimeProfile.installDirName}.backup")
         if (backupDir.exists()) {
             backupDir.deleteRecursively()
         }

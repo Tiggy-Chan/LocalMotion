@@ -14,6 +14,7 @@ import com.localmotion.BuildConfig
 import com.localmotion.R
 import com.localmotion.data.RuntimeBundleManifest
 import com.localmotion.data.RuntimeRepository
+import com.localmotion.data.currentRuntimeWorkloadProfile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -124,7 +125,10 @@ class RuntimeInstallService : Service() {
                 updateNotification("正在下载运行时清单")
                 val manifestPayload = downloadText(manifestUrl)
                 val manifest = RuntimeBundleManifest.fromJson(manifestPayload, manifestUrl)
-                val manifestErrors = manifest.validate(Build.SOC_MODEL)
+                val manifestErrors = manifest.validate(
+                    Build.SOC_MODEL,
+                    currentRuntimeWorkloadProfile().id,
+                )
                 if (manifestErrors.isNotEmpty()) {
                     throw IOException(manifestErrors.joinToString(separator = "\n"))
                 }

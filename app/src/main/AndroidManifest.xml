@@ -34,7 +34,7 @@
             android:foregroundServiceType="dataSync" />
 
         <service
-            android:name=".service.ClipGenerationService"
+            android:name=".service.GenerationService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
